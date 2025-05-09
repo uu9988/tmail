@@ -23,6 +23,7 @@ function Content({ lang }: { lang: string }) {
   const [latestId, setLatestId] = useState(-1)
   const [loading, setLoading] = useState(true)
   const [envelopes, setEnvelopes] = useState<Envelope[]>([])
+  const [domains, setDomains] = useState<string[]>([]) // 新增 state 用于存储域名列表
   const controller = useRef<AbortController>(null)
 
   const address = useStore($address)
@@ -32,7 +33,10 @@ function Content({ lang }: { lang: string }) {
   useEffect(() => {
     fetch("/api/domain")
       .then((res) => res.json())
-      .then((res) => initStore(res))
+      .then((res) => {
+        initStore(res)
+        setDomains(res) // 将域名列表存储到 state 中
+      })
       .catch(fetchError)
 
     return () => controller.current?.abort(ABORT_SAFE)
