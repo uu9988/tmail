@@ -1,106 +1,112 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import EmailSelector from './EmailSelector'; // 添加这行代码，确保导入了 EmailSelector 组件
+import EmailSelector from './EmailSelector'; // Ensure you have imported the EmailSelector component
 import {
   ClipboardCopy,
   ExternalLink,
   Frown,
   Loader,
   RotateCw,
-} from "lucide-react"
-import Actions from "@/components/Actions.tsx"
-import type { Envelope } from "@/lib/types.ts"
-import { fetchError, fmtDate, fmtFrom, fmtString } from "@/lib/utils.ts"
-import { toast } from "sonner"
-import { useStore } from "@nanostores/react"
-import { $address, initStore } from "@/lib/store/store.ts"
-import { ABORT_SAFE } from "@/lib/constant.ts"
-import Mounted from "@/components/Mounted.tsx"
-import { Skeleton } from "@/components/ui/skeleton.tsx"
-import Detail from "@/components/Detail.tsx"
-import { type language, useTranslations } from "@/i18n/ui.ts"
-import { clsx } from "clsx"
+} from "lucide-react";
+import Actions from "@/components/Actions.tsx";
+import type { Envelope } from "@/lib/types.ts";
+import { fetchError, fmtDate, fmtFrom, fmtString } from "@/lib/utils.ts";
+import { toast } from "sonner";
+import { useStore } from "@nanostores/react";
+import { $address, initStore } from "@/lib/store/store.ts";
+import { ABORT_SAFE } from "@/lib/constant.ts";
+import Mounted from "@/components/Mounted.tsx";
+import { Skeleton } from "@/components/ui/skeleton.tsx";
+import Detail from "@/components/Detail.tsx";
+import { type language, useTranslations } from "@/i18n/ui.ts";
+import { clsx } from "clsx";
 
 function Content({ lang }: { lang: string }) {
-  const [latestId, setLatestId] = useState(-1)
-  const [loading, setLoading] = useState(true)
-  const [envelopes, setEnvelopes] = useState<Envelope[]>([])
-  const controller = useRef<AbortController>(null)
+  const [latestId, setLatestId] = useState(-1);
+  const [loading, setLoading] = useState(true);
+  const [envelopes, setEnvelopes] = useState<Envelope[]>([]);
+  const [emailPrefix, setEmailPrefix] = useState('');
+  const [selectedDomain, setSelectedDomain] = useState('isco.eu.org');
+  const controller = useRef<AbortController>(null);
 
-  const address = useStore($address)
+  const address = useStore($address);
 
-  const t = useMemo(() => useTranslations(lang as language), [])
+  const t = useMemo(() => useTranslations(lang as language), []);
 
   useEffect(() => {
     fetch("/api/domain")
       .then((res) => res.json())
       .then((res) => initStore(res))
-      .catch(fetchError)
+      .catch(fetchError);
 
-    return () => controller.current?.abort(ABORT_SAFE)
-  }, [])
+    return () => controller.current?.abort(ABORT_SAFE);
+  }, []);
 
   useEffect(() => {
     if (latestId < 0) {
-      return
+      return;
     }
 
-    fetchLatest().catch(fetchError)
-  }, [latestId])
+    fetchLatest().catch(fetchError);
+  }, [latestId]);
 
   useEffect(() => {
     if (!address) {
-      return
+      return;
     }
-    controller.current?.abort(ABORT_SAFE)
-    controller.current = new AbortController()
+    controller.current?.abort(ABORT_SAFE);
+    controller.current = new AbortController();
 
-    setLoading(true)
-    setEnvelopes([])
-    setLatestId(-1)
+    setLoading(true);
+    setEnvelopes([]);
+    setLatestId(-1);
     fetchAll()
       .catch(fetchError)
-      .finally(() => setLoading(false))
-  }, [address])
+      .finally(() => setLoading(false));
+  }, [address]);
 
   async function fetchAll() {
     const res = await fetch("/api/fetch?to=" + address, {
       signal: controller.current!.signal,
-    })
+    });
     if (!res.ok) {
-      toast.error((await res.json()).message)
-      return
+      toast.error((await res.json()).message);
+      return;
     }
-    const list = await res.json()
-    setEnvelopes(list)
-    setLatestId(list.length > 0 ? list[0].id : 0)
+    const list = await res.json();
+    setEnvelopes(list);
+    setLatestId(list.length > 0 ? list[0].id : 0);
   }
 
   async function fetchLatest() {
     const res = await fetch(`/api/fetch/latest?to=${address}&id=${latestId}`, {
       signal: controller.current!.signal,
-    })
+    });
     if (!res.ok) {
-      setTimeout(() => fetchLatest().catch(fetchError), 1000)
-      toast.error((await res.json()).message)
-      return
+      setTimeout(() => fetchLatest().catch(fetchError), 1000);
+      toast.error((await res.json()).message);
+      return;
     }
     if (res.status === 204) {
-      setTimeout(() => fetchLatest().catch(fetchError))
-      return
+      setTimeout(() => fetchLatest().catch(fetchError));
+      return;
     }
-    const e = await res.json()
-    e.animate = true
-    setEnvelopes([e, ...envelopes])
-    setLatestId(e.id)
-    toast.success(fmtString(t("receiveNew"), e.from))
+    const e = await res.json();
+    e.animate = true;
+    setEnvelopes([e, ...envelopes]);
+    setLatestId(e.id);
+    toast.success(fmtString(t("receiveNew"), e.from));
   }
 
   function copyToClipboard() {
     navigator.clipboard
       .writeText(address)
       .then(() => toast.success(t("copy") + " " + address))
-      .catch((e) => toast.error(e.message ?? e))
+      .catch((e) => toast.error(e.message ?? e));
   }
+
+  const generateEmail = () => {
+    return `${emailPrefix}@${selectedDomain}`;
+  };
 
   return (
     <div className="sm:animate-in sm:slide-in-from-right-2/3 flex w-full flex-col pb-4 duration-300">
@@ -170,8 +176,17 @@ function Content({ lang }: { lang: string }) {
         ))}
       </div>
       <div className="flex-1" />
+
+      {/* Add the EmailSelector component here */}
+      <EmailSelector
+        value={emailPrefix}
+        onChange={(value: string) => setEmailPrefix(value)}
+      />
+      <div className="generated-email">
+        Generated Email: {generateEmail()}
+      </div>
     </div>
-  )
+  );
 }
 
-export default Content
+export default Content;
