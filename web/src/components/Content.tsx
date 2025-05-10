@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import EmailSelector from './EmailSelector'; // 添加这行代码，确保导入了 EmailSelector 组件
 import {
   ClipboardCopy,
   ExternalLink,
